@@ -25,7 +25,12 @@ import audio_analysis
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 
 app = Flask(__name__, static_folder=None)
-CORS(app)  # permite rodar frontend/backend em portas diferentes durante o dev
+
+# CORS explicito: permite que o frontend (Netlify, em outro dominio) chame
+# esta API. allow_headers/methods amplos evitam bloqueios de preflight (OPTIONS).
+CORS(app, resources={r"/api/*": {"origins": "*"}},
+     methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type"])
 
 # Extensoes de audio aceitas nesta versao do MVP
 ALLOWED_EXTENSIONS = {'.mp3'}
@@ -85,6 +90,18 @@ def analyze_audio():
         # Garante que o arquivo temporario seja removido mesmo se algo falhar
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@app.errorhandler(Exception)
+def handle_any_error(exc):
+    """
+    Rede de seguranca: se qualquer erro nao previsto acontecer (ex.: estouro
+    de memoria ao processar um MP3 muito longo), o Flask ainda responde com
+    um JSON de erro (com os headers de CORS aplicados normalmente) em vez de
+    o worker simplesmente cair sem resposta - e isso ultimo que faz o
+    navegador exibir um erro de CORS mesmo quando o CORS esta certo.
+    """
+    return jsonify({'error': f'Erro interno ao processar a requisicao: {exc}'}), 500
 
 
 if __name__ == '__main__':

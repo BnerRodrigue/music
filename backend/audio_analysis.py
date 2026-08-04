@@ -42,6 +42,8 @@ BEATS_PER_MEASURE = 4        # assumimos compasso 4/4 (ver observacao no topo do
 MIN_SEGMENT_MEASURES = 2     # segmentos menores que isso sao fundidos ao vizinho (reduz ruido)
 MAX_CLUSTERS = 8             # numero maximo de "tipos" de secao (A, B, C...) a considerar
 MIN_CLUSTERS = 3             # numero minimo de "tipos" de secao a considerar
+MAX_ANALYSIS_SECONDS = 360   # limite de seguranca (6 min) para nao estourar memoria/tempo
+                              # em hospedagens com poucos recursos (ex.: plano free do Render)
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -54,8 +56,11 @@ MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53,
 
 
 def load_audio(file_path):
-    """Carrega o audio em mono, na sample rate padrao do projeto."""
-    y, sr = librosa.load(file_path, sr=SAMPLE_RATE, mono=True)
+    """Carrega o audio em mono, na sample rate padrao do projeto.
+    Limita a duracao analisada (MAX_ANALYSIS_SECONDS) para nao estourar
+    memoria/tempo de CPU em hospedagens com poucos recursos."""
+    y, sr = librosa.load(file_path, sr=SAMPLE_RATE, mono=True,
+                          duration=MAX_ANALYSIS_SECONDS)
     return y, sr
 
 
@@ -153,8 +158,10 @@ def structural_segmentation(y, sr, beat_frames):
     'cluster': id_do_cluster}, ...]
     """
     # --- 1. Features harmonicas (CQT/Chroma) sincronizadas por batida ---
-    bins_per_octave = 12 * 3
-    n_octaves = 6
+    # (parametros reduzidos - bins_per_octave/n_octaves - para manter o uso
+    # de memoria controlado em hospedagens com poucos recursos)
+    bins_per_octave = 12 * 2
+    n_octaves = 5
     C = np.abs(librosa.cqt(y=y, sr=sr, bins_per_octave=bins_per_octave,
                             n_bins=n_octaves * bins_per_octave))
     C_db = librosa.amplitude_to_db(C, ref=np.max)
@@ -297,9 +304,14 @@ def analyze(file_path):
     arquivo de audio temporario e devolve um dicionario pronto para virar
     JSON, com todos os dados que o frontend precisa exibir.
     """
-    y, sr = load_audio(file_path)
+    # Duracao real do arquivo (sem carregar tudo em memoria), usada para
+    # exibicao - mesmo que a analise em si seja limitada a
+    # MAX_ANALYSIS_SECONDS por questao de memoria/tempo de CPU.
+    full_duration = float(librosa.get_duration(path=file_path))
 
-    duration = get_duration(y, sr)
+    y, sr = load_audio(file_path)
+    analyzed_duration = get_duration(y, sr)
+
     tempo, beat_frames, beat_times = estimate_tempo_and_beats(y, sr)
     key = estimate_key(y, sr)
 
@@ -322,13 +334,19 @@ def analyze(file_path):
             'measures': compute_measures(seg_duration, tempo),
         })
 
-    total_measures = compute_measures(duration, tempo)
+    total_measures = compute_measures(full_duration, tempo)
 
-    return {
-        'duration_seconds': round(duration, 1),
+    result = {
+        'duration_seconds': round(full_duration, 1),
         'bpm': tempo,
         'key': key,
         'time_signature': '4/4',  # ver observacao no topo do arquivo
         'total_measures_approx': total_measures,
         'sections': sections,
     }
+
+    if full_duration > analyzed_duration + 1:
+        # Avisa o frontend que a segmentacao cobre so o trecho inicial
+        result['truncated_analysis_seconds'] = round(analyzed_duration, 1)
+
+    return result
