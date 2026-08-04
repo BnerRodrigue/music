@@ -357,3 +357,33 @@ def analyze(file_path):
         result['truncated_analysis_seconds'] = round(analyzed_duration, 1)
 
     return result
+
+
+def warmup():
+    """
+    Forca a compilacao (JIT) das funcoes internas do numba usadas pelo
+    librosa ANTES do servidor comecar a receber requisicoes de verdade.
+
+    Sem isso, essa compilacao pesada (que so acontece uma vez por processo)
+    aconteceria durante a primeira analise de audio de um usuario real,
+    o que pode estourar o timeout da requisicao (o CPU de planos gratuitos
+    e compartilhado/lento). Rodando aqui, na inicializacao do servidor,
+    o tempo gasto conta como "tempo de boot" (bem mais tolerante) e nao
+    como "tempo de resposta de uma requisicao HTTP".
+
+    Usamos um sinal sintetico curto (poucos segundos de tom senoidal) so
+    para exercitar o mesmo caminho de codigo - nao precisa fazer sentido
+    musical, so precisa passar pelas mesmas funcoes.
+    """
+    try:
+        duration_seconds = 6
+        t = np.linspace(0, duration_seconds, duration_seconds * SAMPLE_RATE, endpoint=False)
+        y = 0.3 * np.sin(2 * np.pi * 220.0 * t).astype(np.float32)
+
+        tempo, beat_frames, _ = estimate_tempo_and_beats(y, SAMPLE_RATE)
+        estimate_key(y, SAMPLE_RATE)
+        structural_segmentation(y, SAMPLE_RATE, beat_frames)
+    except Exception:
+        # O warmup e so uma otimizacao de tempo de resposta - se falhar por
+        # qualquer motivo, deixamos o servidor subir normalmente mesmo assim.
+        pass

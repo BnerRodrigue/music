@@ -32,6 +32,12 @@ CORS(app, resources={r"/api/*": {"origins": "*"}},
      methods=["GET", "POST", "OPTIONS"],
      allow_headers=["Content-Type"])
 
+# "Aquece" as funcoes de audio (forca a compilacao JIT do numba) antes do
+# servidor comecar a aceitar requisicoes de verdade - ver comentario
+# detalhado na funcao audio_analysis.warmup(). Isso acontece uma unica vez,
+# na inicializacao do processo.
+audio_analysis.warmup()
+
 # Extensoes de audio aceitas nesta versao do MVP
 ALLOWED_EXTENSIONS = {'.mp3'}
 MAX_CONTENT_LENGTH = 30 * 1024 * 1024  # 30 MB - limite razoavel para um MVP
