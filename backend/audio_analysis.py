@@ -28,16 +28,14 @@ Observacao sobre compasso (time signature):
 
 Observacao sobre memoria (hospedagens gratuitas, ex.: Render free - 512MB):
     O librosa usa a biblioteca "numba" para compilar (JIT) algumas de suas
-    funcoes internas na primeira chamada, o que pode consumir bastante
-    memoria momentaneamente. Em ambientes com pouca RAM isso pode causar
-    "out of memory" (processo morto com SIGKILL). Por isso desativamos o
-    JIT do numba abaixo ANTES de importar o librosa - fica um pouco mais
-    lento, porem muito mais leve em memoria, o que e o compromisso certo
-    para um MVP hospedado em plano gratuito.
+    funcoes internas. Chegamos a desativar esse JIT (NUMBA_DISABLE_JIT=1)
+    numa tentativa de economizar memoria, mas isso na verdade dispara um
+    bug conhecido do proprio numba em funcoes guvectorized/stencil usadas
+    pelo librosa (ver github.com/numba/numba/issues/9452), entao NAO
+    desativamos mais o JIT. A compilacao acontece uma unica vez, na
+    primeira chamada apos o servidor subir (nao a cada requisicao), entao
+    o custo de memoria dela e pontual.
 """
-
-import os
-os.environ.setdefault('NUMBA_DISABLE_JIT', '1')
 
 import numpy as np
 import librosa
