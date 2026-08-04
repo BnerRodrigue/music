@@ -89,7 +89,10 @@ def analyze_audio():
         return jsonify(result), 200
 
     except Exception as exc:
-        # Em um MVP, devolvemos a mensagem de erro de forma simples e direta
+        # Registra o traceback completo no log do servidor (aba "Logs" do
+        # Render) para facilitar o diagnostico, alem de devolver uma
+        # mensagem resumida ao navegador.
+        app.logger.exception('Falha ao analisar o audio')
         return jsonify({'error': f'Falha ao analisar o audio: {exc}'}), 500
 
     finally:
@@ -106,7 +109,11 @@ def handle_any_error(exc):
     um JSON de erro (com os headers de CORS aplicados normalmente) em vez de
     o worker simplesmente cair sem resposta - e isso ultimo que faz o
     navegador exibir um erro de CORS mesmo quando o CORS esta certo.
+
+    Tambem registramos o traceback completo no log do servidor (visivel na
+    aba "Logs" do Render), pois a mensagem enviada ao navegador e resumida.
     """
+    app.logger.exception('Erro nao tratado ao processar requisicao')
     return jsonify({'error': f'Erro interno ao processar a requisicao: {exc}'}), 500
 
 
