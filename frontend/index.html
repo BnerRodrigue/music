@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analisador de Estrutura Musical</title>
+
+  <!-- Tailwind via CDN (sem build step - adequado para o MVP) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos customizados (animacoes, ajustes finos que o Tailwind puro nao cobre) -->
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen font-[Inter] antialiased">
+
+  <main class="min-h-screen flex flex-col items-center justify-start py-12 px-4">
+
+    <!-- ===================== CABECALHO ===================== -->
+    <div class="text-center mb-8 fade-in-up">
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-white">
+        Analisador de Estrutura Musical
+      </h1>
+      <p class="text-neutral-400 mt-2 text-sm md:text-base">
+        Envie um MP3, detecte a estrutura automaticamente e nomeie cada secao.
+      </p>
+    </div>
+
+    <!-- ===================== CARD CENTRAL ===================== -->
+    <section class="w-full max-w-3xl bg-neutral-900/80 border border-neutral-800 rounded-2xl shadow-2xl shadow-black/40 p-6 md:p-8 fade-in-up">
+
+      <!-- ---------- Etapa 1: Upload ---------- -->
+      <div id="upload-step">
+        <label for="mp3-input"
+               class="group flex flex-col items-center justify-center gap-3 border-2 border-dashed border-neutral-700 hover:border-emerald-500/60 rounded-xl py-10 px-6 cursor-pointer transition-colors duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-neutral-500 group-hover:text-emerald-500 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0-3 3m3-3 3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+          </svg>
+          <span class="text-neutral-300 font-medium" id="upload-label">Selecionar MP3</span>
+          <span class="text-neutral-500 text-xs">Arquivo permanece apenas na sessao atual</span>
+          <input id="mp3-input" type="file" accept=".mp3,audio/mpeg" class="hidden" />
+        </label>
+
+        <button id="analyze-btn" disabled
+                class="mt-5 w-full py-3 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed transition-colors duration-300">
+          Analisar Musica
+        </button>
+      </div>
+
+      <!-- ---------- Etapa 2: Loading ---------- -->
+      <div id="loading-step" class="hidden flex-col items-center gap-4 py-10">
+        <div class="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
+          <div id="progress-bar" class="h-2 bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <p id="loading-text" class="text-neutral-400 text-sm">Carregando audio...</p>
+      </div>
+
+      <!-- ---------- Etapa 3: Resultado ---------- -->
+      <div id="result-step" class="hidden flex-col gap-6">
+
+        <!-- Info geral da faixa -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div class="info-card">
+            <span class="info-label">Arquivo</span>
+            <span id="info-filename" class="info-value truncate">-</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Duracao</span>
+            <span id="info-duration" class="info-value">-</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">BPM</span>
+            <span id="info-bpm" class="info-value">-</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Tom</span>
+            <span id="info-key" class="info-value">-</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Compasso</span>
+            <span id="info-time-signature" class="info-value">-</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Compassos (total)</span>
+            <span id="info-measures" class="info-value">-</span>
+          </div>
+        </div>
+
+        <!-- Mapa da musica -->
+        <div>
+          <h2 class="text-lg font-semibold text-white mb-3">Mapa da Musica</h2>
+          <div id="sections-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- Acoes -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button id="export-btn"
+                  class="flex-1 py-3 rounded-xl font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors duration-300">
+            Exportar TXT
+          </button>
+          <button id="reset-btn"
+                  class="flex-1 py-3 rounded-xl font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors duration-300">
+            Analisar outra musica
+          </button>
+        </div>
+      </div>
+
+      <!-- ---------- Erro ---------- -->
+      <div id="error-step" class="hidden">
+        <p id="error-text" class="text-red-400 text-sm text-center py-6"></p>
+        <button id="error-reset-btn" class="w-full py-3 rounded-xl font-semibold bg-neutral-800 hover:bg-neutral-700 transition-colors duration-300">
+          Tentar novamente
+        </button>
+      </div>
+
+    </section>
+
+    <p class="text-neutral-600 text-xs mt-6">
+      Nenhum arquivo e armazenado. Tudo e perdido ao atualizar a pagina.
+    </p>
+  </main>
+
+  <!-- Template de uma linha da secao (usado pelo JS, nao aparece diretamente) -->
+  <template id="section-row-template">
+    <div class="section-row bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+      <div class="flex flex-col min-w-[110px]">
+        <span class="text-emerald-400 font-mono text-sm section-timestamp">00:00</span>
+        <span class="text-neutral-500 text-xs section-detected-label">Secao A</span>
+      </div>
+
+      <div class="flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
+        <select class="section-select bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm w-full sm:w-56 focus:outline-none focus:ring-2 focus:ring-emerald-500/60">
+          <option value="Intro">Intro</option>
+          <option value="Verso">Verso</option>
+          <option value="Verso 2">Verso 2</option>
+          <option value="Pré-Refrão">Pré-Refrão</option>
+          <option value="Refrão">Refrão</option>
+          <option value="Interlúdio">Interlúdio</option>
+          <option value="Solo">Solo</option>
+          <option value="Ponte">Ponte</option>
+          <option value="Vamp">Vamp</option>
+          <option value="Final">Final</option>
+          <option value="Outro">Outro</option>
+          <option value="Livre">Livre (texto)</option>
+        </select>
+        <input type="text" placeholder="Nome da secao..." class="section-custom-name hidden bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm w-full sm:w-56 focus:outline-none focus:ring-2 focus:ring-emerald-500/60" />
+      </div>
+
+      <div class="flex gap-4 text-xs text-neutral-500 md:ml-auto">
+        <span class="section-duration">0s</span>
+        <span class="section-measures">0 compassos</span>
+      </div>
+    </div>
+  </template>
+
+  <script src="/static/js/config.js"></script>
+  <script src="/static/js/script.js"></script>
+</body>
+</html>

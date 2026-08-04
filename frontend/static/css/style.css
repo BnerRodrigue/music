@@ -1,0 +1,76 @@
+/*
+  style.css
+  =========
+  Estilos complementares ao Tailwind (que ja cobre a maior parte do layout).
+  Aqui ficam apenas: animacoes suaves, e classes auxiliares repetidas
+  varias vezes no HTML (para nao poluir o markup com dezenas de classes
+  utilitarias identicas).
+*/
+
+/* ---------- Animacao de entrada suave para o card e cabecalho ---------- */
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Transicao suave ao alternar entre as etapas (upload/loading/resultado) ---------- */
+#upload-step,
+#loading-step,
+#result-step,
+#error-step {
+  transition: opacity 0.25s ease-in-out;
+}
+
+/* ---------- Linha de secao: leve destaque ao passar o mouse ---------- */
+.section-row {
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.section-row:hover {
+  border-color: rgba(16, 185, 129, 0.35); /* emerald-500 com opacidade */
+}
+
+/* ---------- Cartao de informacao (arquivo, duracao, bpm, tom...) ---------- */
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.info-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #737373; /* neutral-500 */
+}
+
+.info-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f5f5f5;
+}
+
+/* ---------- Scrollbar discreta (tema escuro) ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #404040;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}

@@ -1,0 +1,8 @@
+[build]
+  base = "frontend"
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache"
