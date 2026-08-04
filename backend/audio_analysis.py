@@ -25,7 +25,19 @@ Observacao sobre compasso (time signature):
     avancadas (ex.: madmom DBNBeatTracker + downbeat tracking). Nesta
     versao MVP assumimos 4/4 como padrao (o mais comum em musica
     popular/gospel) e deixamos um ponto de extensao claro para o futuro.
+
+Observacao sobre memoria (hospedagens gratuitas, ex.: Render free - 512MB):
+    O librosa usa a biblioteca "numba" para compilar (JIT) algumas de suas
+    funcoes internas na primeira chamada, o que pode consumir bastante
+    memoria momentaneamente. Em ambientes com pouca RAM isso pode causar
+    "out of memory" (processo morto com SIGKILL). Por isso desativamos o
+    JIT do numba abaixo ANTES de importar o librosa - fica um pouco mais
+    lento, porem muito mais leve em memoria, o que e o compromisso certo
+    para um MVP hospedado em plano gratuito.
 """
+
+import os
+os.environ.setdefault('NUMBA_DISABLE_JIT', '1')
 
 import numpy as np
 import librosa
@@ -42,7 +54,7 @@ BEATS_PER_MEASURE = 4        # assumimos compasso 4/4 (ver observacao no topo do
 MIN_SEGMENT_MEASURES = 2     # segmentos menores que isso sao fundidos ao vizinho (reduz ruido)
 MAX_CLUSTERS = 8             # numero maximo de "tipos" de secao (A, B, C...) a considerar
 MIN_CLUSTERS = 3             # numero minimo de "tipos" de secao a considerar
-MAX_ANALYSIS_SECONDS = 360   # limite de seguranca (6 min) para nao estourar memoria/tempo
+MAX_ANALYSIS_SECONDS = 180   # limite de seguranca (3 min) para nao estourar memoria/tempo
                               # em hospedagens com poucos recursos (ex.: plano free do Render)
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -157,14 +169,11 @@ def structural_segmentation(y, sr, beat_frames):
     Retorna uma lista de segmentos: [{'start': seg_inicio_s, 'end': seg_fim_s,
     'cluster': id_do_cluster}, ...]
     """
-    # --- 1. Features harmonicas (CQT/Chroma) sincronizadas por batida ---
-    # (parametros reduzidos - bins_per_octave/n_octaves - para manter o uso
-    # de memoria controlado em hospedagens com poucos recursos)
-    bins_per_octave = 12 * 2
-    n_octaves = 5
-    C = np.abs(librosa.cqt(y=y, sr=sr, bins_per_octave=bins_per_octave,
-                            n_bins=n_octaves * bins_per_octave))
-    C_db = librosa.amplitude_to_db(C, ref=np.max)
+    # --- 1. Features harmonicas (Chroma) sincronizadas por batida ---
+    # Usamos chroma_cqt (12 classes de nota) em vez do CQT bruto de alta
+    # resolucao: e uma representacao bem mais leve em memoria e ainda
+    # suficiente para detectar repeticoes de trechos harmonicos.
+    C_db = librosa.feature.chroma_cqt(y=y, sr=sr)
 
     # garante que existam batidas suficientes para segmentar
     if len(beat_frames) < 8:
