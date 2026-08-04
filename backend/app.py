@@ -56,8 +56,14 @@ def static_files(path):
 # Rota principal da API: recebe o MP3 e devolve a analise em JSON
 # ---------------------------------------------------------------------------
 
-@app.route('/api/analyze', methods=['POST'])
+@app.route('/api/analyze', methods=['POST', 'OPTIONS'])
 def analyze_audio():
+    # Requisicao de "preflight" do CORS - o navegador manda isso antes do
+    # POST de verdade para perguntar se pode prosseguir. Respondemos vazio,
+    # com status 204, e o after_request abaixo adiciona os headers de CORS.
+    if request.method == 'OPTIONS':
+        return '', 204
+
     if 'file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
 
@@ -102,6 +108,20 @@ def handle_any_error(exc):
     navegador exibir um erro de CORS mesmo quando o CORS esta certo.
     """
     return jsonify({'error': f'Erro interno ao processar a requisicao: {exc}'}), 500
+
+
+@app.after_request
+def add_cors_headers(response):
+    """
+    Reforco manual dos headers de CORS em TODA resposta que passa pelo
+    Flask (sucesso, erro 4xx/5xx tratado, ou preflight OPTIONS) - garante
+    que o navegador nunca bloqueie por falta desse header, independente de
+    qualquer comportamento da biblioteca flask-cors.
+    """
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
 
 
 if __name__ == '__main__':
