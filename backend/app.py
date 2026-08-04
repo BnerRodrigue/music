@@ -17,7 +17,6 @@ import os
 import tempfile
 
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 
 import audio_analysis
 
@@ -26,11 +25,9 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 
 app = Flask(__name__, static_folder=None)
 
-# CORS explicito: permite que o frontend (Netlify, em outro dominio) chame
-# esta API. allow_headers/methods amplos evitam bloqueios de preflight (OPTIONS).
-CORS(app, resources={r"/api/*": {"origins": "*"}},
-     methods=["GET", "POST", "OPTIONS"],
-     allow_headers=["Content-Type"])
+# CORS feito manualmente (sem flask-cors) - ver funcao add_cors_headers() logo
+# abaixo. Evita qualquer conflito entre bibliotecas na hora de decidir quem
+# adiciona o header em cada resposta.
 
 # "Aquece" as funcoes de audio (forca a compilacao JIT do numba) antes do
 # servidor comecar a aceitar requisicoes de verdade - ver comentario

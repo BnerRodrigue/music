@@ -1,5 +1,4 @@
 flask==3.0.3
-flask-cors==4.0.1
 gunicorn==22.0.0
 numba==0.60.0
 llvmlite==0.43.0
