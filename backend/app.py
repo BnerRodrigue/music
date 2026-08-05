@@ -17,6 +17,7 @@ import os
 import tempfile
 
 from flask import Flask, request, jsonify, send_from_directory
+from werkzeug.exceptions import HTTPException
 
 import audio_analysis
 
@@ -107,15 +108,22 @@ def analyze_audio():
 @app.errorhandler(Exception)
 def handle_any_error(exc):
     """
-    Rede de seguranca: se qualquer erro nao previsto acontecer (ex.: estouro
+    Rede de seguranca: se qualquer erro NAO PREVISTO acontecer (ex.: estouro
     de memoria ao processar um MP3 muito longo), o Flask ainda responde com
     um JSON de erro (com os headers de CORS aplicados normalmente) em vez de
     o worker simplesmente cair sem resposta - e isso ultimo que faz o
     navegador exibir um erro de CORS mesmo quando o CORS esta certo.
 
+    Erros HTTP "normais" do proprio Flask (404 pagina nao encontrada, 405
+    metodo nao permitido, etc.) NAO passam por aqui como erro 500 - mantemos
+    o status original deles, so garantindo que o CORS tambem seja aplicado.
+
     Tambem registramos o traceback completo no log do servidor (visivel na
     aba "Logs" do Render), pois a mensagem enviada ao navegador e resumida.
     """
+    if isinstance(exc, HTTPException):
+        return exc
+
     app.logger.exception('Erro nao tratado ao processar requisicao')
     return jsonify({'error': f'Erro interno ao processar a requisicao: {exc}'}), 500
 
